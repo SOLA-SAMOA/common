@@ -1,6 +1,6 @@
 /**
  * ******************************************************************************************
- * Copyright (C) 2011 - Food and Agriculture Organization of the United Nations (FAO).
+ * Copyright (C) 2012 - Food and Agriculture Organization of the United Nations (FAO).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -50,7 +50,7 @@ public class RolesConstants {
     public static final String APPLICATION_SERVICE_COMPLETE = "CompleteService";
     public static final String APPLICATION_SERVICE_CANCEL = "CancelService";
     public static final String APPLICATION_SERVICE_REVERT = "RevertService";
-    public static final String APPLICATION_REQUISITE = "ApplnRequisition";
+    public static final String APPLICATION_REQUISITE = "ApplnRequistion";
     public static final String APPLICATION_RESUBMIT = "ApplnResubmit";
     public static final String APPLICATION_APPROVE = "ApplnApprove";
     public static final String APPLICATION_WITHDRAW = "ApplnWithdraw";
@@ -84,6 +84,7 @@ public class RolesConstants {
 
     // PARTY
     public static final String PARTY_SAVE = "PartySave";
+    public static final String PARTY_RIGHTHOLDERS_SAVE = "RHSave";
 
     // REPORTS
     public static final String REPORTS_VIEW = "ReportGen";
@@ -95,4 +96,5 @@ public class RolesConstants {
     public static final String ADMIN_MANAGE_SECURITY = "ManageSecurity";
     public static final String ADMIN_MANAGE_REFDATA = "ManageRefdata";
     public static final String ADMIN_MANAGE_SETTINGS = "ManageSettings";
+    public static final String ADMIN_MANAGE_BR = "ManageBR";
 }
