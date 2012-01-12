@@ -27,82 +27,109 @@
  */
 package org.sola.common.logging;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
-import org.apache.log4j.Appender;
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.FileAppender;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
-import org.sola.common.SOLAException;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+import org.sola.common.DateUtility;
 
 /**
- *
- * @author dounnaah
+ * Uses Java Util Logging to log details to the SOLA Log file. This 
+ * LogUtility should be used for client side or common logging. For service side logging, use 
+ * {@linkplain org.sola.services.logging.LogUtility}. 
+ * @author soladev
  */
 public final class LogUtility {
 
-    private static Logger solaLog = null; 
+    private final static Logger solaLog = Logger.getLogger("org.sola.common");
+    private static boolean logConfigured = false;
 
     /**
-     * Log files will be found in the working directory. 
-     * For Glassfish this is the .../glassfish/domains/<domain name>/logs/sola_<date>.log
-     * file. For the desktop client this is ...?
+     * Configures a logger for the SOLA Log file. The SOLA Log file is located at
+     * <user.home>/sola/logs. 
      */
     private static void configure() {
 
-        
         String DATE_FORMAT_NOW = "yyyyMMdd";
-        Calendar cal = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT_NOW);
-        String logName = "sola_" + sdf.format(cal.getTime()) + ".log";
-        try{
-        Appender a = new FileAppender(new PatternLayout("%-5p %d  %m%n"),
-                System.getProperty("user.dir") + "/../logs/" + logName);
+        String formattedDate = DateUtility.simpleFormat(DATE_FORMAT_NOW);
+        String logFileDir = System.getProperty("user.home") + "/sola/logs/";
+        String logFile = logFileDir + formattedDate + ".log";
 
-        BasicConfigurator.configure(a);
-        solaLog = Logger.getLogger(LogUtility.class.getName());
-        solaLog.setLevel(org.apache.log4j.Level.INFO);
+        try {
+            // Check if the directory to hold the log file exists. If not, create it. 
+            // Unfortuanately the FileHander class will fail with a Unable to obtain Lock error
+            // if the directory does not already exist. 
+            File d = new File(logFileDir);
+            if (!d.exists()) {
+                d.mkdirs();
+            }
+            FileHandler fh = new FileHandler(logFile, true);
+            fh.setFormatter(new SimpleFormatter());
+            solaLog.addHandler(fh);
+            // Modify the log level if required for debugging purposes. 
+            solaLog.setLevel(Level.INFO);
+            solaLog.log(Level.INFO, "*** SOLA Log Configured ***"); 
+
+        } catch (Exception ex) {
+            // Output a println message with the eror as an exception may cause an inifinte loop
+            // when an attempt is made to log it. 
+            System.err.println("Unable to initalize logging. Error: " + getStackTraceAsString(ex));
         }
-        catch(Exception ex)
-        {
-            // Throw a SOLA Runtime exception
-          throw new SOLAException("Log Exception", ex);
-        }
+        logConfigured = true;
     }
 
     private static Logger getSolaLog() {
-        if (solaLog == null) {
+        if (!logConfigured) {
             configure();
         }
         return solaLog;
     }
 
+    /**
+     * Logs an INFO level message to the SOLA Log file.
+     * @param msg 
+     */
     public static void log(String msg) {
         log(msg, Level.INFO);
     }
 
+    /**
+     * Logs a message with the specified log level to the SOLA Log File. Note that by default
+     * only INFO, WARNING and SEVERE messages will be logged. To log messages of lower level
+     * update the configure method. 
+     * @param msg
+     * @param level 
+     */
     public static void log(String msg, Level level) {
         Logger logger = getSolaLog();
-        if (level == Level.FINER || level == Level.FINEST) {
-            logger.trace(msg);
-        } else if (level == Level.FINE) {
-            logger.debug(msg);
-        } else if (level == Level.INFO || level == Level.CONFIG) {
-            logger.info(msg);
-        } else if (level == Level.WARNING) {
-            logger.warn(msg);
-        } else if (level == Level.SEVERE) {
-            logger.error(msg);
-        } else {
-            logger.info(msg);
+        if (logger != null) {
+            logger.log(level, msg);
         }
     }
-    
-    public static void log(String msg, Exception ex){
-        getSolaLog().error(msg, ex);
-        System.out.println("Error:\n" + msg);
-        ex.printStackTrace();
+
+    /**
+     * Logs a message along with the stack trace details from the exception as a SEVERE message. 
+     * @param msg
+     * @param ex 
+     */
+    public static void log(String msg, Exception ex) {
+        msg = msg + System.getProperty("line.separator") + getStackTraceAsString(ex);
+        log(msg, Level.SEVERE);
+    }
+
+    /**
+     * Formats the stacktrace for an exception into a string
+     * @param t The throwable exception
+     * @return The stacktrace of the exception formatted as a string
+     */
+    public static String getStackTraceAsString(Exception ex) {
+        Writer result = new StringWriter();
+        PrintWriter printWriter = new PrintWriter(result);
+        ex.printStackTrace(printWriter);
+        return result.toString();
     }
 }
