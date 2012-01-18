@@ -35,22 +35,33 @@ import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
+import java.util.prefs.Preferences;
 import org.sola.common.DateUtility;
 
 /**
- * Uses Java Util Logging to log details to the SOLA Log file. This 
+ * Uses Java Utility Logging to log details to the SOLA Log file. The log file is located at
+ * <user.home>/sola/logs. The name of the log file is <yyyyMMdd>.log or 
+ * <mainApplicationClassName>_<yyyyMMdd>.log if a mainApplicationClass is specified using the
+ * {@linkplain #initialize} method. The LogUtility will also record user preferences for the log 
+ * level if the mainApplciationClass is specified. 
+ * <p>
  * LogUtility should be used for client side or common logging. For service side logging, use 
- * {@linkplain org.sola.services.logging.LogUtility}. 
+ * {@linkplain org.sola.services.logging.LogUtility}. </p>
  * @author soladev
  */
 public final class LogUtility {
 
-    private final static Logger solaLog = Logger.getLogger("org.sola.common");
+    public static final String SOLA_COMMON_LOGGER = "org.sola.common";
+    private static final String LOG_LEVEL_PREFERENCE = "logLevel";
+    private final static Logger solaLog = Logger.getLogger(SOLA_COMMON_LOGGER);
+    private static Class<?> mainClass = null;
     private static boolean logConfigured = false;
 
     /**
      * Configures a logger for the SOLA Log file. The SOLA Log file is located at
-     * <user.home>/sola/logs. 
+     * <user.home>/sola/logs. The default name for the log file is <yyyyMMdd>.log. If 
+     * a mainApplicationClass is identified for the LogUtilty (using the {@linkplain #initialize} method), 
+     * the name for the log file is <mainApplicationClassName>_<yyyyMMdd>.log
      */
     private static void configure() {
 
@@ -58,6 +69,9 @@ public final class LogUtility {
         String formattedDate = DateUtility.simpleFormat(DATE_FORMAT_NOW);
         String logFileDir = System.getProperty("user.home") + "/sola/logs/";
         String logFile = logFileDir + formattedDate + ".log";
+        if (mainClass != null) {
+            logFile = logFileDir + mainClass.getSimpleName() + "_" + formattedDate + ".log";
+        }
 
         try {
             // Check if the directory to hold the log file exists. If not, create it. 
@@ -70,9 +84,22 @@ public final class LogUtility {
             FileHandler fh = new FileHandler(logFile, true);
             fh.setFormatter(new SimpleFormatter());
             solaLog.addHandler(fh);
-            // Modify the log level if required for debugging purposes. 
-            solaLog.setLevel(Level.INFO);
-            solaLog.log(Level.INFO, "*** SOLA Log Configured ***"); 
+
+            // Determine the appropriate level to set for the Logger by checking if the user
+            // has any level preferences. 
+            Level levelPref = Level.INFO;
+            if (mainClass != null) {
+                Preferences prefs = Preferences.userNodeForPackage(mainClass);
+                String lev = prefs.get(LOG_LEVEL_PREFERENCE, Level.INFO.toString());
+                levelPref = Level.parse(lev);
+            }
+
+            // Only log the config message if the log is turned on. 
+            if (!levelPref.equals(Level.OFF)) {
+                solaLog.setLevel(Level.INFO);
+                solaLog.log(Level.INFO, "*** SOLA Log Configured ***");
+            }
+            solaLog.setLevel(levelPref);
 
         } catch (Exception ex) {
             // Output a println message with the eror as an exception may cause an inifinte loop
@@ -82,6 +109,10 @@ public final class LogUtility {
         logConfigured = true;
     }
 
+    /**
+     * Helper function that configures the sola log before returning it 
+     * @return 
+     */
     private static Logger getSolaLog() {
         if (!logConfigured) {
             configure();
@@ -100,7 +131,7 @@ public final class LogUtility {
     /**
      * Logs a message with the specified log level to the SOLA Log File. Note that by default
      * only INFO, WARNING and SEVERE messages will be logged. To log messages of lower level
-     * update the configure method. 
+     * set the log level using the setLogLevel method first. 
      * @param msg
      * @param level 
      */
@@ -119,6 +150,49 @@ public final class LogUtility {
     public static void log(String msg, Exception ex) {
         msg = msg + System.getProperty("line.separator") + getStackTraceAsString(ex);
         log(msg, Level.SEVERE);
+    }
+
+    /**
+     * Sets the log level to the specified value and logs a message into the log file indicating
+     * the log level has changed. Also configures the new log level as a user preference if a 
+     * mainApplicationClass has been setup using the {@linkplain #initialize} method. 
+     * @param logLevel 
+     */
+    public static void setLogLevel(Level logLevel) {
+        Logger logger = getSolaLog();
+        if (logger != null && !logger.getLevel().equals(logLevel)) {
+            // Set the log level to INFO and log an info message that the log level is about
+            // to change. 
+            logger.setLevel(Level.INFO);
+            log("*** " + SOLA_COMMON_LOGGER + " log level set to " + logLevel.toString() + " ***");
+            logger.setLevel(logLevel);
+            if (mainClass != null) {
+                Preferences prefs = Preferences.userNodeForPackage(mainClass);
+                prefs.put(LOG_LEVEL_PREFERENCE, logLevel.toString());
+            }
+        }
+    }
+
+    /**
+     * Retrieves the current log level
+     * @return 
+     */
+    public static Level getLogLevel() {
+        Logger logger = getSolaLog();
+        Level logLevel = null;
+        if (logger != null) {
+            logLevel = logger.getLevel();
+        }
+        return logLevel;
+    }
+
+    /**
+     * The main application class is used to control the name of the log file as well as the
+     * the location to store user preferences for the log level.
+     * @param mainLoggerClass The main application class
+     */
+    public static void initialize(Class<?> mainApplicationClass) {
+        mainClass = mainApplicationClass;
     }
 
     /**
