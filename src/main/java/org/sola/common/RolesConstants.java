@@ -68,7 +68,7 @@ public class RolesConstants {
     public static final String ADMINISTRATIVE_BA_UNIT_SEARCH = "BaunitSearch";
 
     // TRANSACTIONAL DOCUMENTS
-    public static final String SOURCE_TRANSACTIONAL = "TransCommit";
+    public static final String SOURCE_TRANSACTIONAL = "TransactionCommit";
 
     // DOCUMENTS
     public static final String SOURCE_SAVE = "SourceSave";
