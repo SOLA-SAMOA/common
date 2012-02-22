@@ -52,6 +52,7 @@ public class RolesConstants {
     public static final String APPLICATION_SERVICE_REVERT = "RevertService";
     public static final String APPLICATION_REQUISITE = "ApplnRequistion";
     public static final String APPLICATION_RESUBMIT = "ApplnResubmit";
+    public static final String APPLICATION_LAPSE = "ApplnLapse";
     public static final String APPLICATION_APPROVE = "ApplnApprove";
     public static final String APPLICATION_WITHDRAW = "ApplnWithdraw";
     public static final String APPLICATION_REJECT = "ApplnReject";
