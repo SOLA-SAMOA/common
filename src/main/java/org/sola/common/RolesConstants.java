@@ -33,18 +33,18 @@ package org.sola.common;
 public class RolesConstants {
 
     // DASHBOARD
-    public static final String DASHBOARD_VIEW_ASSIGNED_APPS = "DashbrdViewassign";
-    public static final String DASHBOARD_VIEW_UNASSIGNED_APPS = "DashbrdViewunassign";
-    public static final String DASHBOARD_VIEW_OWN_APPS = "DashbrdViewown";
+    public static final String DASHBOARD_VIEW_ASSIGNED_APPS = "DashbrdViewAssign";
+    public static final String DASHBOARD_VIEW_UNASSIGNED_APPS = "DashbrdViewUnassign";
+    public static final String DASHBOARD_VIEW_OWN_APPS = "DashbrdViewOwn";
 
     // APPLICATION
     public static final String APPLICATION_VIEW_APPS = "ApplnView";
     public static final String APPLICATION_CREATE_APPS = "ApplnCreate";
     public static final String APPLICATION_EDIT_APPS = "ApplnEdit";
     public static final String APPLICATION_PRINT_STATUS_REPORT = "ApplnStatus";
-    public static final String APPLICATION_ASSIGN_TO_YOURSELF = "ApplnAssignself";
+    public static final String APPLICATION_ASSIGN_TO_YOURSELF = "ApplnAssignSelf";
     public static final String APPLICATION_ASSIGN_TO_OTHERS = "ApplnAssignOthers";
-    public static final String APPLICATION_UNASSIGN_FROM_YOURSELF = "ApplnUnassignself";
+    public static final String APPLICATION_UNASSIGN_FROM_YOURSELF = "ApplnUnassignSelf";
     public static final String APPLICATION_UNASSIGN_FROM_OTHERS = "ApplnUnassignOthers";
     public static final String APPLICATION_SERVICE_START = "StartService";
     public static final String APPLICATION_SERVICE_COMPLETE = "CompleteService";
