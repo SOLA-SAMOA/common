@@ -1,28 +1,30 @@
 /**
  * ******************************************************************************************
- * Copyright (C) 2012 - Food and Agriculture Organization of the United Nations (FAO).
- * All rights reserved.
+ * Copyright (C) 2012 - Food and Agriculture Organization of the United Nations
+ * (FAO). All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- *    1. Redistributions of source code must retain the above copyright notice,this list
- *       of conditions and the following disclaimer.
- *    2. Redistributions in binary form must reproduce the above copyright notice,this list
- *       of conditions and the following disclaimer in the documentation and/or other
- *       materials provided with the distribution.
- *    3. Neither the name of FAO nor the names of its contributors may be used to endorse or
- *       promote products derived from this software without specific prior written permission.
+ * 1. Redistributions of source code must retain the above copyright notice,this
+ * list of conditions and the following disclaimer. 2. Redistributions in binary
+ * form must reproduce the above copyright notice,this list of conditions and
+ * the following disclaimer in the documentation and/or other materials provided
+ * with the distribution. 3. Neither the name of FAO nor the names of its
+ * contributors may be used to endorse or promote products derived from this
+ * software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
- * SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,PROCUREMENT
- * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,STRICT LIABILITY,OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
- * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT,STRICT LIABILITY,OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  * *********************************************************************************************
  */
 package org.sola.common;
@@ -48,11 +50,15 @@ import org.apache.sanselan.Sanselan;
 import org.sola.common.messaging.ClientMessage;
 import org.sola.common.messaging.ServiceMessage;
 
-/** Provides static methods to manage various aspects related to the files. */
+/**
+ * Provides static methods to manage various aspects related to the files.
+ */
 public class FileUtility {
 
-    /** 
-     * Returns <code>byte[]</code> array of the file. 
+    /**
+     * Returns
+     * <code>byte[]</code> array of the file.
+     *
      * @param filePath The full path to the file.
      */
     public static byte[] getFileBinary(String filePath) {
@@ -96,8 +102,9 @@ public class FileUtility {
         }
     }
 
-    /** 
+    /**
      * Returns file's extention.
+     *
      * @param fileName The name of the file.
      */
     public static String getFileExtesion(String fileName) {
@@ -109,8 +116,9 @@ public class FileUtility {
     }
 
     /**
-     * Creates the file out of the given byte array in the temporary folder 
-     * and runs it.
+     * Creates the file out of the given byte array in the temporary folder and
+     * runs it.
+     *
      * @param fileBinary Byte array representing file content.
      * @param tmpFileName The name to use as a temporary file name.
      */
@@ -126,14 +134,14 @@ public class FileUtility {
 
         try {
             if (file.exists()) {
-                file.delete();
+                if (file.delete()) {
+                    file.createNewFile();
+                    FileOutputStream fs = new FileOutputStream(file);
+                    fs.write(fileBinary);
+                    fs.flush();
+                    fs.close();
+                }
             }
-
-            file.createNewFile();
-            FileOutputStream fs = new FileOutputStream(file);
-            fs.write(fileBinary);
-            fs.flush();
-            fs.close();
         } catch (IOException iex) {
             Object[] lstParams = {iex.getLocalizedMessage()};
             throw new SOLAException(ClientMessage.ERR_FAILED_CREATE_NEW_FILE, lstParams);
@@ -150,8 +158,9 @@ public class FileUtility {
     }
 
     /**
-     * Creates thumbnail image for the given file. Returns null if format 
-     * is not supported.
+     * Creates thumbnail image for the given file. Returns null if format is not
+     * supported.
+     *
      * @param filePath The full path to the file.
      * @param width Thumbnail width.
      * @param height Thumbnail height.
@@ -226,10 +235,10 @@ public class FileUtility {
                     raf.close();
 
                 } else {
-                    
+
                     BufferedImage img = Sanselan.getBufferedImage(file);
                     thumbnail = Toolkit.getDefaultToolkit().createImage(img.getSource());
-                    
+
                 }
 
                 if (thumbnail == null || thumbnail.getWidth(null) <= 0
