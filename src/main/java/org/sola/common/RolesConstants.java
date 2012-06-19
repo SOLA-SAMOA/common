@@ -57,7 +57,7 @@ public class RolesConstants {
     public static final String APPLICATION_WITHDRAW = "ApplnWithdraw";
     public static final String APPLICATION_REJECT = "ApplnReject";
     public static final String APPLICATION_VALIDATE = "ApplnValidate";
-    public static final String APPLICATION_DESPATCH = "ApplnDespatch";
+    public static final String APPLICATION_DISPATCH = "ApplnDispatch";
     public static final String APPLICATION_ARCHIVE = "ApplnArchive";
 
     // ADMINISTRATIVE
