@@ -32,6 +32,7 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -63,6 +64,10 @@ public class FileUtility {
      * Default is 120Mb.
      */
     private static final long RESIZED_CACHE_SIZE_BYTES = 120 * 1024 * 1024;
+    /**
+     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 20Mb.
+     */
+    private static final long MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
     /**
      * Creates the file out of the given byte array in the documents cache folder.
@@ -145,21 +150,38 @@ public class FileUtility {
      * @param filePath The full path to the file.
      */
     public static byte[] getFileBinary(String filePath) {
-        try {
-            File file = new File(filePath);
+        return getFileBinary(filePath, MAX_FILE_SIZE_BYTES);
+    }
 
-            if (!file.exists()) {
-                return null;
-            }
+    /**
+     * Returns the byte array for the file. The maximum size of the file to load can be set in case
+     * the default value of 20Mb is too small (e.g. when loading files on the service end).
+     * An exception is raised if the file exceeds the maxFileSize setting. 
+     *
+     * @param filePath The full path to the file
+     * @param maxFileSizeBytes The maximum size of the file in bytes.
+     */
+    public static byte[] getFileBinary(String filePath, long maxFileSizeBytes) {
+        File file = new File(filePath);
+
+        if (!file.exists()) {
+            return null;
+        }
+
+        // Get the size of the file
+        long length = file.length();
+
+        if (length > maxFileSizeBytes) {
+            DecimalFormat df = new DecimalFormat("#,###.#");
+            String maxFileSizeMB = df.format(maxFileSizeBytes / (1024 * 1024));
+            String fileSizeMB = df.format(length / (1024 * 1024));
+            throw new SOLAException(ServiceMessage.EXCEPTION_FILE_TOO_BIG,
+                    new String[]{fileSizeMB, maxFileSizeMB});
+        }
+
+        try {
 
             InputStream inStream = new FileInputStream(file);
-
-            // Get the size of the file
-            long length = file.length();
-
-            if (length > Integer.MAX_VALUE) {
-                throw new Exception("File too large");
-            }
 
             byte[] bytes = new byte[(int) length];
 
