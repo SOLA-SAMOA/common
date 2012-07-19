@@ -58,10 +58,8 @@ public class FileUtility {
     private static long maxCacheSizeBytes = 200 * 1024 * 1024;
     private static long resizedCacheSizeBytes = 120 * 1024 * 1024;
     private static int minNumberCachedFiles = 10;
-    /**
-     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 100Mb.
-     */
-    private static final long MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+    private static long maxFileSizeBytes = 100 * 1024 * 1024;
+    private static String cachePath = System.getProperty("user.home") + "/sola/cache/documents/";
 
     /**
      * Checks the cache to ensure it won't exceed the max size cache size. If the new document will
@@ -90,6 +88,9 @@ public class FileUtility {
 
             int numFiles = files.size();
             for (File f : files) {
+                if (numFiles < minNumberCachedFiles) {
+                    break;
+                }
                 // Only delete files - ignore subdirectories. 
                 if (f.isFile()) {
                     cacheSize = cacheSize - f.length();
@@ -99,9 +100,6 @@ public class FileUtility {
                     }
                 }
                 numFiles--;
-                if (numFiles < minNumberCachedFiles) {
-                    break;
-                }
             }
         }
     }
@@ -134,24 +132,64 @@ public class FileUtility {
     }
 
     /**
-     * Returns
-     * <code>byte[]</code> array of the file.
+     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 100MB.
      *
-     * @param filePath The full path to the file.
+     * <p>SOLA uses a file streaming service to upload and download files to and from the client.
+     * The file streaming service streams files directly to disk and does not store them in memory
+     * allowing the SOLA client application to potentially handle files of any size. However, be
+     * aware that files must be completely loaded into memory by the Digital Archive Service before
+     * they can be saved to the SOLA database. Increasing this value from its default may require
+     * adjusting the memory settings for the SOLA domain on the SOLA Glassfish Server. </p>
+     *
+     * @param sizeInBytes The maximum size of the file in bytes.
      */
-    public static byte[] getFileBinary(String filePath) {
-        return getFileBinary(filePath, MAX_FILE_SIZE_BYTES);
+    public static void setMaxFileSizeBytes(long sizeInBytes) {
+        maxFileSizeBytes = sizeInBytes;
     }
 
     /**
-     * Returns the byte array for the file. The maximum size of the file to load can be set in case
-     * the default value of 20Mb is too small (e.g. when loading files on the service end). An
-     * exception is raised if the file exceeds the maxFileSize setting.
+     * Sets the path to use for the documents cache
+     *
+     * @param newCachePath The new cache path.
+     */
+    public static void setCachePath(String newCachePath) {
+        if (newCachePath != null) {
+            cachePath = newCachePath;
+        }
+    }
+
+    /**
+     * Returns the absolute file path for the documents cache directory.
+     */
+    public static String getCachePath() {
+        File cache = new File(cachePath);
+        if (!cache.exists()) {
+            // Need to create the file cache directory. 
+            cache.mkdirs();
+        }
+        return cachePath;
+    }
+
+    /**
+     * Returns true if the file to check is already in the documents cache. Note that the document
+     * name should include the rowVersion number to ensure any documents that get updated also get
+     * reloaded in the cache.
+     *
+     * @param tmpFileName The name of the file to check in the documents cache.
+     */
+    public static boolean isCached(String tmpFileName) {
+        tmpFileName = sanitizeFileName(tmpFileName, true);
+        File file = new File(getCachePath() + File.separator + tmpFileName);
+        return file.exists();
+    }
+
+    /**
+     * Returns the byte array for the file. The default maximum size of a file to load is 100MB.
+     * This can be modified using {@linkplain #setMaxFileSizeBytes(long)}
      *
      * @param filePath The full path to the file
-     * @param maxFileSizeBytes The maximum size of the file in bytes.
      */
-    public static byte[] getFileBinary(String filePath, long maxFileSizeBytes) {
+    public static byte[] getFileBinary(String filePath) {
         File file = new File(filePath);
         if (!file.exists()) {
             return null;
@@ -182,32 +220,6 @@ public class FileUtility {
             ext = fileName.substring(fileName.lastIndexOf(".") + 1);
         }
         return ext;
-    }
-
-    /**
-     * Returns the absolute file path for the documents cache directory.
-     */
-    public static String getCachePath() {
-        String cachePath = System.getProperty("user.home") + "/sola/cache/documents/";
-        File cache = new File(cachePath);
-        if (!cache.exists()) {
-            // Need to create the file cache directory. 
-            cache.mkdirs();
-        }
-        return cachePath;
-    }
-
-    /**
-     * Returns true if the file to check is already in the documents cache. Note that the document
-     * name should include the rowVersion number to ensure any documents that get updated also get
-     * reloaded in the cache.
-     *
-     * @param tmpFileName The name of the file to check in the documents cache.
-     */
-    public static boolean isCached(String tmpFileName) {
-        tmpFileName = sanitizeFileName(tmpFileName, true);
-        File file = new File(getCachePath() + File.separator + tmpFileName);
-        return file.exists();
     }
 
     /**
@@ -541,7 +553,7 @@ public class FileUtility {
 
     /**
      * Creates a {@linkplain DataHandler} for a file located on the local file system. The file can
-     * be loaded from any accessible location. ALso sets the MIME type for the file.
+     * be loaded from any accessible location.
      *
      * @param fileName The name of the file to create the DataHandler for. If the file is in the
      * cache, only the file name is required. If the file is located elsewhere, the full file
@@ -582,6 +594,9 @@ public class FileUtility {
      * sanitization. If the fileName is null, a random file name will be used.
      */
     public static File writeFileToCache(byte[] fileContent, String fileName) {
+        if (fileContent == null) {
+            return null;
+        }
         if (fileName == null) {
             fileName = generateFileName();
         } else {
@@ -626,6 +641,10 @@ public class FileUtility {
      * @throws IOException If an IO error occurs while attempting to write the file.
      */
     public static void writeFile(InputStream in, File file) throws IOException {
+        if (file == null || in == null) {
+            // Nothing to write
+            return;
+        }
         OutputStream out = null;
         try {
             deleteFile(file);
@@ -658,7 +677,7 @@ public class FileUtility {
      */
     public static byte[] readFile(File file) throws IOException {
         byte[] result = null;
-        if (file.exists()) {
+        if (file != null && file.exists()) {
             FileInputStream in = new FileInputStream(file);
             try {
                 int length = (int) file.length();
@@ -689,7 +708,7 @@ public class FileUtility {
      * @param file The file to delete.
      */
     public static void deleteFile(File file) {
-        if (file.exists()) {
+        if (file != null && file.exists()) {
             file.delete();
         }
     }
