@@ -25,6 +25,7 @@
  */
 package org.sola.common;
 
+import com.sun.istack.ByteArrayDataSource;
 import com.sun.pdfview.PDFFile;
 import com.sun.pdfview.PDFPage;
 import java.awt.*;
@@ -37,9 +38,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import javax.activation.DataHandler;
+import javax.activation.FileDataSource;
 import javax.swing.ImageIcon;
 import org.apache.sanselan.Sanselan;
+import org.jvnet.staxex.StreamingDataHandler;
 import org.sola.common.messaging.ClientMessage;
+import org.sola.common.messaging.MessageUtility;
 import org.sola.common.messaging.ServiceMessage;
 
 /**
@@ -50,57 +55,13 @@ import org.sola.common.messaging.ServiceMessage;
  */
 public class FileUtility {
 
+    private static long maxCacheSizeBytes = 200 * 1024 * 1024;
+    private static long resizedCacheSizeBytes = 120 * 1024 * 1024;
+    private static int minNumberCachedFiles = 10;
     /**
-     * Keeps track of the size of the documents cache, so that the cache can be purged if it becomes
-     * too big.
+     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 100Mb.
      */
-    private static long cacheSize = -1;
-    /**
-     * Maximum size for the documents cache in bytes. Default is 200Mb.
-     */
-    private static final long MAX_CACHE_SIZE_BYTES = 200 * 1024 * 1024;
-    /**
-     * The maximum size of the cache in bytes after it has been purged to remove old documents.
-     * Default is 120Mb.
-     */
-    private static final long RESIZED_CACHE_SIZE_BYTES = 120 * 1024 * 1024;
-    /**
-     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 20Mb.
-     */
-    private static final long MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-
-    /**
-     * Creates the file out of the given byte array in the documents cache folder.
-     *
-     * @param fileBinary Byte array representing file content.
-     * @param tmpFileName The name to use as a temporary file name.
-     */
-    private static void createFile(byte[] fileBinary, File file) {
-        try {
-            File cache = new File(getCachePath());
-            if (!cache.exists()) {
-                // Need to create the file cache directory. 
-                cache.mkdirs();
-            } else {
-                // Check if the cache needs to have some documents purged
-                maintainCache(cache, fileBinary.length);
-            }
-
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-            file.setLastModified(DateUtility.now().getTime());
-            FileOutputStream fs = new FileOutputStream(file);
-            fs.write(fileBinary);
-            fs.flush();
-            fs.close();
-
-        } catch (IOException iex) {
-            Object[] lstParams = {iex.getLocalizedMessage()};
-            throw new SOLAException(ClientMessage.ERR_FAILED_CREATE_NEW_FILE, lstParams);
-        }
-    }
+    private static final long MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
 
     /**
      * Checks the cache to ensure it won't exceed the max size cache size. If the new document will
@@ -111,13 +72,10 @@ public class FileUtility {
      * @param newFileSize The size of the new file to open in bytes.
      */
     private static void maintainCache(File cache, long newFileSize) {
-        if (cacheSize < 0 || (cacheSize + newFileSize) > MAX_CACHE_SIZE_BYTES) {
-            // Determine the actual size of the cache directory. Ignore the size of subdirectories.
-            cacheSize = getDirectorySize(cache, false);
-        }
+        long cacheSize = getDirectorySize(cache, false);
         cacheSize += newFileSize;
-        if (cacheSize > MAX_CACHE_SIZE_BYTES) {
-
+        if (cacheSize > maxCacheSizeBytes) {
+            System.out.println("Resizing SOLA documents cache.");
             // The cache has exceeded its max size. Delete the oldest files in the cache based
             // on thier last modified date. 
             List<File> files = Arrays.asList(cache.listFiles());
@@ -130,17 +88,49 @@ public class FileUtility {
                 }
             });
 
+            int numFiles = files.size();
             for (File f : files) {
                 // Only delete files - ignore subdirectories. 
                 if (f.isFile()) {
                     cacheSize = cacheSize - f.length();
                     f.delete();
-                    if (cacheSize < RESIZED_CACHE_SIZE_BYTES) {
+                    if (cacheSize < resizedCacheSizeBytes) {
                         break;
                     }
                 }
+                numFiles--;
+                if (numFiles < minNumberCachedFiles) {
+                    break;
+                }
             }
         }
+    }
+
+    /**
+     * Sets the minimum number of files that should be left in the cache when it is being resized.
+     * Default is 10.
+     */
+    public static void setMinNumberCachedFiles(int num) {
+        minNumberCachedFiles = num;
+    }
+
+    /**
+     * The target size of the cache in bytes after a resize/maintenance is performed. Default is
+     * 120MB.
+     *
+     * @param sizeInBytes The target size of the cache in bytes.
+     */
+    public static void setResizedCacheSizeBytes(long sizeInBytes) {
+        resizedCacheSizeBytes = sizeInBytes;
+    }
+
+    /**
+     * The maximum size of the cache in bytes. Default is 200MB
+     *
+     * @param sizeInBytes The maximum size of the cache in bytes.
+     */
+    public static void setMaxCacheSizeBytes(long sizeInBytes) {
+        maxCacheSizeBytes = sizeInBytes;
     }
 
     /**
@@ -155,55 +145,29 @@ public class FileUtility {
 
     /**
      * Returns the byte array for the file. The maximum size of the file to load can be set in case
-     * the default value of 20Mb is too small (e.g. when loading files on the service end).
-     * An exception is raised if the file exceeds the maxFileSize setting. 
+     * the default value of 20Mb is too small (e.g. when loading files on the service end). An
+     * exception is raised if the file exceeds the maxFileSize setting.
      *
      * @param filePath The full path to the file
      * @param maxFileSizeBytes The maximum size of the file in bytes.
      */
     public static byte[] getFileBinary(String filePath, long maxFileSizeBytes) {
         File file = new File(filePath);
-
         if (!file.exists()) {
             return null;
         }
-
-        // Get the size of the file
-        long length = file.length();
-
-        if (length > maxFileSizeBytes) {
+        if (file.length() > maxFileSizeBytes) {
             DecimalFormat df = new DecimalFormat("#,###.#");
             String maxFileSizeMB = df.format(maxFileSizeBytes / (1024 * 1024));
-            String fileSizeMB = df.format(length / (1024 * 1024));
+            String fileSizeMB = df.format(file.length() / (1024 * 1024));
             throw new SOLAException(ServiceMessage.EXCEPTION_FILE_TOO_BIG,
                     new String[]{fileSizeMB, maxFileSizeMB});
         }
-
         try {
-
-            InputStream inStream = new FileInputStream(file);
-
-            byte[] bytes = new byte[(int) length];
-
-            // Read in the bytes
-            int offset = 0;
-            int numRead = 0;
-            while (offset < bytes.length && (numRead = inStream.read(bytes, offset, bytes.length - offset)) >= 0) {
-                offset += numRead;
-            }
-
-            // Ensure all the bytes have been read in
-            if (offset < bytes.length) {
-                throw new IOException("Could not completely read file " + file.getName());
-            }
-
-            // Close the input stream and return bytes
-            inStream.close();
-            return bytes;
-
-        } catch (Exception e) {
+            return readFile(file);
+        } catch (IOException ex) {
             throw new SOLAException(ServiceMessage.GENERAL_UNEXPECTED_ERROR_DETAILS,
-                    new String[]{e.getLocalizedMessage()});
+                    new String[]{"File could not be read", ex.getLocalizedMessage()});
         }
     }
 
@@ -224,7 +188,13 @@ public class FileUtility {
      * Returns the absolute file path for the documents cache directory.
      */
     public static String getCachePath() {
-        return System.getProperty("user.home") + "/sola/cache/documents/";
+        String cachePath = System.getProperty("user.home") + "/sola/cache/documents/";
+        File cache = new File(cachePath);
+        if (!cache.exists()) {
+            // Need to create the file cache directory. 
+            cache.mkdirs();
+        }
+        return cachePath;
     }
 
     /**
@@ -235,6 +205,7 @@ public class FileUtility {
      * @param tmpFileName The name of the file to check in the documents cache.
      */
     public static boolean isCached(String tmpFileName) {
+        tmpFileName = sanitizeFileName(tmpFileName, true);
         File file = new File(getCachePath() + File.separator + tmpFileName);
         return file.exists();
     }
@@ -269,7 +240,8 @@ public class FileUtility {
      * @param tmpFileName The name of the file to open from the documents cache.
      */
     public static void openFile(String tmpFileName) {
-        openFile(new File(getCachePath() + File.separator + tmpFileName));
+        String fileName = sanitizeFileName(tmpFileName, true);
+        openFile(new File(getCachePath() + File.separator + fileName));
     }
 
     /**
@@ -280,8 +252,7 @@ public class FileUtility {
      * @param fileName The name to use for creating the file. This name must exclude any file path.
      */
     public static void openFile(byte[] fileBinary, String fileName) {
-        File file = new File(getCachePath() + File.separator + fileName);
-        createFile(fileBinary, file);
+        File file = writeFileToCache(fileBinary, fileName);
         openFile(file);
     }
 
@@ -291,14 +262,40 @@ public class FileUtility {
      * @param file The file to open
      * @throws SOLAException Failed to open file
      */
-    private static void openFile(File file) throws SOLAException {
-        try {
-            // Try to open
+    public static void openFile(File file) {
+        if (file == null) {
+            return;
+        }
+        String fileName = file.getName();
+        if (isExecutable(fileName)) {
+            // Make sure the extension is changed before opening the file. 
+            fileName = setTmpExtension(fileName);
+            File nonExeFile = new File(getCachePath() + File.separator + fileName);
+            file.renameTo(nonExeFile);
+            file = nonExeFile;
+        }
+        // Try to open the file. Need to check if the current platform has Java Desktop support and 
+        // if so, whether the OPEN action is also supported. 
+        boolean fileOpened = false;
+        if (Desktop.isDesktopSupported()) {
             Desktop dt = Desktop.getDesktop();
-            dt.open(file);
-        } catch (IOException iex) {
-            Object[] lstParams = {iex.getLocalizedMessage()};
-            throw new SOLAException(ClientMessage.ERR_FAILED_OPEN_FILE, lstParams);
+            if (dt.isSupported(Desktop.Action.OPEN)) {
+                try {
+                    dt.open(file);
+                    fileOpened = true;
+                } catch (Exception ex) {
+                    // The file could not be opened. The most likely cause is there is no editor
+                    // installed for the file extension, but it may be due to file security 
+                    // restrictions. Either way, inform the user they should open the file manually. 
+                    fileOpened = false;
+                }
+            }
+        }
+        if (!fileOpened) {
+            // The Java Desktop is not supported on this platform. Riase a mesage to 
+            // tell the user they must manually open the document. 
+            MessageUtility.displayMessage(ClientMessage.ERR_FAILED_OPEN_FILE,
+                    new String[]{file.getAbsolutePath()});
         }
     }
 
@@ -412,8 +409,299 @@ public class FileUtility {
             }
 
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            // Most likely the a thumbnail cannot be generated for the file type. Ignore the
+            // exception and continue. 
+            System.out.println("Unable to generate thumbnail - " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Removes path separator characters (i.e. / and \) from the fileName. Used to ensure user input
+     * does not redirect files to an unsafe locations. Also replaces the extension for any file with
+     * an executable file extension with .tmp if the replaceExtension parameter is true.
+     *
+     * @param fileName The fileName to sanitize.
+     * @param replaceExtension If true, any executable extension on the file will be replaced with
+     * .tmp
+     * @see #isExecutable(java.lang.String)
+     * @see #setTmpExtension(java.lang.String)
+     */
+    public static String sanitizeFileName(String fileName, boolean replaceExtension) {
+        String result = fileName.replaceAll("\\\\|\\/", "#");
+        if (isExecutable(result) && replaceExtension) {
+            result = setTmpExtension(fileName);
+        }
+        return result;
+    }
+
+    /**
+     * Checks if the file extension is considered to be an executable file extension. Returns true
+     * if the extension is .exe, .msi, .bat, .cmd
+     *
+     * @param fileName The file name to check
+     */
+    public static boolean isExecutable(String fileName) {
+        String extension = getFileExtension(fileName);
+        boolean result = extension.equalsIgnoreCase("exe") || extension.equalsIgnoreCase("msi")
+                || extension.equalsIgnoreCase("bat") || extension.equalsIgnoreCase("cmd");
+        return result;
+    }
+
+    /**
+     * Replaces the file extension with tmp. Note that the original file extension is retained as
+     * part of the file name. e.g. file.exe becomes file_exe.tmp
+     *
+     * @param fileName The file name to check.
+     */
+    public static String setTmpExtension(String fileName) {
+        fileName = fileName.replaceAll("\\.", "_");
+        return fileName + ".tmp";
+    }
+
+    /**
+     * Generates a default file name using a random GUID as the primary file name value.
+     *
+     * @see #generateFileName(java.lang.String, int, java.lang.String) generateFileName
+     */
+    public static String generateFileName() {
+        return generateFileName(java.util.UUID.randomUUID().toString(), 0, "tmp");
+    }
+
+    /**
+     * Creates a versioned file name based on the document information.
+     *
+     * @param fileNr The number assigned to the document
+     * @param rowVersion The rowversion of the document.
+     * @param extension The file extension of the document.
+     * @see #generateFileName()
+     */
+    public static String generateFileName(String fileNr, int rowVersion, String extension) {
+        if (fileNr == null || extension == null || fileNr.isEmpty() || extension.isEmpty()) {
+            return generateFileName();
+        }
+        String fileName = String.format("sola_%s_%s.%s", fileNr, rowVersion, extension);
+        return sanitizeFileName(fileName, true);
+    }
+
+    /**
+     * Saves a data stream from a {@linkplain DataHandler} to the specified file. Used to allow more
+     * efficient management of large file transfers between the SOLA client(s) and the web services.
+     *
+     * <p>If the DataHandler is a {@linkplain StreamingDataHandler}, then the
+     * {@linkplain StreamingDataHandler#moveTo(java.io.File)} method is used to save the file to
+     * disk. Otherwise the InputStream from the DataHandler is written to disk using
+     * {@linkplain #writeFileToCache(java.io.InputStream, java.io.File) writeFileToCache}.</p>
+     *
+     * <p>Note that file streaming is not currently supported if Metro security is used. Refer to
+     * http://java.net/jira/browse/WSIT-1081 for details. Using Security also substantially
+     * increases the memory required to handle large files with a practical limit around 15MB to
+     * 20MB.</p>
+     *
+     * @param dataHandler The dataHandler representing the file.
+     * @param fileName The name of the file to write the DataHander stream to. If null a random file
+     * name will be generated for the stream.
+     * @return The file name used to save the file data. This may differ from the fileName passed in
+     * if the fileName was null or it included invalid characters (e.g. / \). Will return null if
+     * the dataHandler is null;
+     */
+    public static String saveFileFromStream(DataHandler dataHandler, String fileName) {
+        if (dataHandler == null) {
             return null;
         }
+        if (fileName == null) {
+            fileName = generateFileName();
+        } else {
+            fileName = sanitizeFileName(fileName, true);
+        }
+        String filePathName = getCachePath() + File.separator + fileName;
+        File file = new File(filePathName);
+        deleteFile(file);
+        try {
+            if (dataHandler instanceof StreamingDataHandler) {
+                StreamingDataHandler sdh = null;
+                try {
+                    sdh = (StreamingDataHandler) dataHandler;
+                    sdh.moveTo(file);
+                } finally {
+                    if (sdh != null) {
+                        sdh.close();
+                    }
+                }
+            } else {
+                writeFile(dataHandler.getInputStream(), file);
+            }
+            maintainCache(new File(getCachePath()), 0);
+        } catch (Exception ex) {
+            throw new SOLAException(ServiceMessage.GENERAL_UNEXPECTED_ERROR_DETAILS,
+                    new Object[]{"Saving file " + fileName, ex.getLocalizedMessage(), ex});
+        }
+        return fileName;
+    }
+
+    /**
+     * Creates a {@linkplain DataHandler} for a file located on the local file system. The file can
+     * be loaded from any accessible location. ALso sets the MIME type for the file.
+     *
+     * @param fileName The name of the file to create the DataHandler for. If the file is in the
+     * cache, only the file name is required. If the file is located elsewhere, the full file
+     * pathname is required.
+     */
+    public static DataHandler getFileAsStream(String filePathName) {
+        File file = new File(getCachePath() + File.separator + filePathName);
+        if (!file.exists()) {
+            file = new File(filePathName);
+        }
+        DataHandler result = null;
+        if (file.exists()) {
+            result = new DataHandler(new FileDataSource(file));
+        } else {
+            throw new SOLAException(ClientMessage.ERR_FAILED_OPEN_FILE,
+                    new String[]{filePathName});
+        }
+        return result;
+    }
+
+    /**
+     * Creates a {@linkplain DataHandler} for a byte array representing the content of a file. Also
+     * configures the MIME type to ensure the content is correctly mapped as a DataHander.
+     *
+     * @param fileContent The byte array containing the file content.
+     */
+    public static DataHandler getFileAsStream(byte[] fileContent) {
+        return new DataHandler(new ByteArrayDataSource(fileContent, "application/octet-stream"));
+    }
+
+    /**
+     * Writes the file content to a file in the documents cache. The fileName is sanitized before
+     * the new file is written. The new file name can be obtained from the {@linkplain File#getName()}
+     * method.
+     *
+     * @param fileContent The content of the file to write to the file system
+     * @param fileName The name to use for the new file. That file name may change due to
+     * sanitization. If the fileName is null, a random file name will be used.
+     */
+    public static File writeFileToCache(byte[] fileContent, String fileName) {
+        if (fileName == null) {
+            fileName = generateFileName();
+        } else {
+            fileName = sanitizeFileName(fileName, true);
+        }
+        File file = new File(getCachePath() + File.separator + fileName);
+        try {
+            // Check if the cache needs to have some documents purged
+            maintainCache(new File(getCachePath()), fileContent.length);
+            // Write the file to disk
+            writeFile(new ByteArrayInputStream(fileContent), file);
+        } catch (IOException iex) {
+            Object[] lstParams = {fileName, iex.getLocalizedMessage()};
+            throw new SOLAException(ClientMessage.ERR_FAILED_CREATE_NEW_FILE, lstParams);
+        }
+        return file;
+    }
+
+    /**
+     * Reads a file in the documents cache into a byte array for further processing.
+     *
+     * @param fileName THe name of the file to read. The fileName will be sanitized.
+     * @return The byte array representing the content of the file.
+     */
+    public static byte[] readFileFromCache(String fileName) {
+        fileName = sanitizeFileName(fileName, true);
+        File file = new File(getCachePath() + File.separator + fileName);
+        try {
+            return readFile(file);
+        } catch (IOException ex) {
+            throw new SOLAException(ServiceMessage.GENERAL_UNEXPECTED_ERROR_DETAILS,
+                    new String[]{"File could not be read from cache", ex.getLocalizedMessage()});
+        }
+    }
+
+    /**
+     * Writes the data from an input stream to the specified file using buffered 8KB chunks. This
+     * method closes the input stream once the write is completed.
+     *
+     * @param in The InputStream to write
+     * @param file The file to write the input stream to
+     * @throws IOException If an IO error occurs while attempting to write the file.
+     */
+    public static void writeFile(InputStream in, File file) throws IOException {
+        OutputStream out = null;
+        try {
+            deleteFile(file);
+            file.setLastModified(DateUtility.now().getTime());
+            out = new FileOutputStream(file);
+            // Use an 8K buffer for writing the file. This is usually the most effecient 
+            // buffer size. 
+            byte[] buf = new byte[8 * 1024];
+            int len;
+            while ((len = in.read(buf)) != -1) {
+                out.write(buf, 0, len);
+            }
+            out.flush();
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+            if (out != null) {
+                out.close();
+            }
+        }
+    }
+
+    /**
+     * Reads a file from the file system into a byte array.
+     *
+     * @param file The file to read.
+     * @return Byte array representing the file content. Returns null if the file does not exist.
+     * @throws IOException
+     */
+    public static byte[] readFile(File file) throws IOException {
+        byte[] result = null;
+        if (file.exists()) {
+            FileInputStream in = new FileInputStream(file);
+            try {
+                int length = (int) file.length();
+                result = new byte[length];
+                int offset = 0;
+                int bytesRead = 1;
+                // Attempt to slurp the entire file into the array in one go. Note that sometimes
+                // read will not return all of the data, so need to add a while loop to continue
+                // trying to read the reminaing bytes. If no bytes are read, exit the loop. 
+                while (offset < length && bytesRead > 0) {
+                    bytesRead = in.read(result, offset, (length - offset));
+                    offset = bytesRead > 0 ? (offset + bytesRead) : offset;
+                }
+                if (offset < length) {
+                    throw new SOLAException(ServiceMessage.GENERAL_UNEXPECTED_ERROR_DETAILS,
+                            new Object[]{"File could not be read", file.getName()});
+                }
+            } finally {
+                in.close();
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Deletes the file from the file system if it exists.
+     *
+     * @param file The file to delete.
+     */
+    public static void deleteFile(File file) {
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
+    /**
+     * Deletes the file from the documents cache if it exists.
+     *
+     * @param fileName The name of the file to remove from the cache.
+     */
+    public static void deleteFileFromCache(String fileName) {
+        fileName = sanitizeFileName(fileName, true);
+        File file = new File(getCachePath() + File.separator + fileName);
+        deleteFile(file);
     }
 }

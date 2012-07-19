@@ -1,6 +1,6 @@
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <artifactId>sola-main</artifactId>
@@ -62,6 +62,15 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-nop</artifactId>
             <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <!-- Required for the file streaming methods in FileUtility. Set to provided
+            as it these methods should only be used by the Web Services or the WS Clients which
+            already have a dependency on Metro. Also reduces the size if the SOLA EAR by 13Mb -->
+            <groupId>org.glassfish.metro</groupId>
+            <artifactId>webservices-rt</artifactId>
+            <version>2.2</version>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <!--repositories>
