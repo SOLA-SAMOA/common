@@ -4,11 +4,22 @@
           xsi:schemaLocation="http://dozer.sourceforge.net
           http://dozer.sourceforge.net/schema/beanmapping.xsd">
 
-  <configuration>
+    <configuration>
       <!-- Global setting used when processing a list of objects. It avoids duplicating items 
            that already exist in the target list. This setting is essential when translating TO's
            into entities.-->
-    <relationship-type>non-cumulative</relationship-type>
-  </configuration>
-                   
+        <relationship-type>non-cumulative</relationship-type>
+        <custom-converters> 
+        <!-- Registers the ByteArrayConverter for the unboxed byte[] type i.e. [B. Addresses
+        a Dozer bug when translating array types with the non-cumulative option - see 
+        Lighthouse ticket #160 for the link to the Dozer bug. There is no converter registered 
+        for the boxed  byte array type i.e. [Ljava.lang.Byte; If this becomes necessary a new 
+        converter will need to be created. -->
+            <converter type="org.sola.common.mapping.ByteArrayConverter">
+                <class-a>[B</class-a>
+                <class-b>[B</class-b>
+            </converter>
+        </custom-converters>
+        
+    </configuration>            
 </mappings>
