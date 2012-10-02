@@ -51,26 +51,26 @@ public class SOLAException extends RuntimeException {
         return messageParameters;
     }
 
-    public void setMessageParameters(Object[] messageParameters) {
-        this.messageParameters = messageParameters;
+    public void setMessageParameters(Object[] messageParameters) { //NOSONAR
+        this.messageParameters = messageParameters; //NOSONAR
     }
 
     public SOLAException(String messageCode) {
         super(messageCode);
     }
 
-    public SOLAException(String messageCode, Object[] messageParameters) {
+    public SOLAException(String messageCode, Object[] messageParameters) { //NOSONAR
         super(messageCode);
-        this.messageParameters = messageParameters;
+        this.messageParameters = messageParameters; //NOSONAR
     }
 
     public SOLAException(String messageCode, Throwable cause) {
         super(messageCode, cause);
     }
 
-    public SOLAException(String messageCode, Object[] messageParameters, Throwable cause) {
+    public SOLAException(String messageCode, Object[] messageParameters, Throwable cause) { //NOSONAR
         super(messageCode, cause);
-        this.messageParameters = messageParameters;
+        this.messageParameters = messageParameters; //NOSONAR
     }
 
     @Override
