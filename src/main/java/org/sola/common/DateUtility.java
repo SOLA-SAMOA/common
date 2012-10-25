@@ -208,7 +208,9 @@ public class DateUtility {
         if ((date1 == null && date2 == null) || date2 == null) {
             return date1;
         }
-        if (date1 != null && date1.compareTo(date2) < 0) {
+        // Compare the milliseconds of the date because the CompareTo function is unreliable when
+        // comparing java.util.Date with java.sql.Date
+        if (date1 != null && date1.getTime() > date2.getTime()) {
             return date1;
         }
         return date2;
