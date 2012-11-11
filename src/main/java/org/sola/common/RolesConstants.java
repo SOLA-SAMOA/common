@@ -59,13 +59,15 @@ public class RolesConstants {
     public static final String APPLICATION_VALIDATE = "ApplnValidate";
     public static final String APPLICATION_DISPATCH = "ApplnDispatch";
     public static final String APPLICATION_ARCHIVE = "ApplnArchive";
-	public static final String APPLICATION_SET_NUMBER = "ApplnNr";
+    public static final String APPLICATION_SET_NUMBER = "ApplnNr";
+    public static final String APPLICATION_RECORD_FEE_PAYMENT = "FeePayment";
+     public static final String APPLICATION_EDIT_COMPLETE_DATE = "ApplnCompleteDate";
 
     // ADMINISTRATIVE
     public static final String ADMINISTRATIVE_BA_UNIT_SAVE = "BaunitSave";
     public static final String ADMINISTRATIVE_RRR_SAVE = "BaunitrrrSave";
     public static final String ADMINISTRATIVE_PARCEL_SAVE = "BaunitParcelSave";
-    public static final String ADMINISTRATIVE_NOTATION_SAVE = "BaunitNotnSave";
+    public static final String ADMINISTRATIVE_NOTATION_SAVE = "BaunitNotatSave";
     public static final String ADMINISTRATIVE_BA_UNIT_PRINT_CERT = "BaunitCertificate";
     public static final String ADMINISTRATIVE_BA_UNIT_SEARCH = "BaunitSearch";
 
@@ -76,6 +78,7 @@ public class RolesConstants {
     public static final String SOURCE_SAVE = "SourceSave";
     public static final String SOURCE_SEARCH = "SourceSearch";
     public static final String SOURCE_PRINT = "SourcePrint";
+    public static final String SOURCE_VIEW = "ViewSource";
 
     // GIS
     public static final String GIS_VIEW_MAP = "ViewMap";
@@ -86,6 +89,7 @@ public class RolesConstants {
 
     // PARTY
     public static final String PARTY_SAVE = "PartySave";
+    public static final String PARTY_SEARCH = "PartySearch";
     public static final String PARTY_RIGHTHOLDERS_SAVE = "RHSave";
 
     // REPORTS
@@ -96,6 +100,7 @@ public class RolesConstants {
     
     // ADMIN
     public static final String ADMIN_MANAGE_SECURITY = "ManageSecurity";
+    public static final String ADMIN_MANAGE_USER_PASSWORD = "ManageUserPassword";
     public static final String ADMIN_MANAGE_REFDATA = "ManageRefdata";
     public static final String ADMIN_MANAGE_SETTINGS = "ManageSettings";
     public static final String ADMIN_MANAGE_BR = "ManageBR";
