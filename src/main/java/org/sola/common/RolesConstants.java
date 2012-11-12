@@ -70,6 +70,7 @@ public class RolesConstants {
     public static final String ADMINISTRATIVE_NOTATION_SAVE = "BaunitNotatSave";
     public static final String ADMINISTRATIVE_BA_UNIT_PRINT_CERT = "BaunitCertificate";
     public static final String ADMINISTRATIVE_BA_UNIT_SEARCH = "BaunitSearch";
+    public static final String ADMINISTRATIVE_STRATA_UNIT_CREATE = "StrataUnitCreate";
 
     // TRANSACTIONAL DOCUMENTS
     public static final String SOURCE_TRANSACTIONAL = "TransactionCommit";
