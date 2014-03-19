@@ -53,7 +53,7 @@ public class ConfigConstants {
      * this setting will have immediate effect. Default 0.075.
      */
     public static final String TAX_RATE = "tax-rate";
-    /**
+  /**
      * network-scan-folder - The network folder location used to store scanned
      * images. Used by the Digital Archive Service to display new scanned
      * documents for attachment to applications. Also used by the
@@ -71,6 +71,43 @@ public class ConfigConstants {
      * the SharedFolderCleaner service.
      */
     public static final String CLEAN_NETWORK_SCAN_FOLDER = "clean-network-scan-folder";
+    /**
+     * network-scan-folder-domain - The domain of the user account that should
+     * be used to connect to the network scan folder. Required if the network
+     * scan folder is located at a different computer to the one hosting the
+     * Glassfish server. Used by the Digital Archive Service to display new
+     * scanned documents for attachment to applications. Also used by the
+     * SharedFolderCleaner service to remove images from the scan folder. The
+     * SOLA Services must be restarted before changes to this value take effect.
+     * Default is null.
+     */
+    public static final String NETWORK_SCAN_FOLDER_DOMAIN = "network-scan-folder-domain";
+    /**
+     * network-scan-folder-user - The user account that should be used to
+     * connect to the network scan folder. Required if the network scan folder
+     * is located at a different computer to the one hosting the Glassfish
+     * server. Used by the Digital Archive Service to display new scanned
+     * documents for attachment to applications. Also used by the
+     * SharedFolderCleaner service to remove images from the scan folder. The
+     * SOLA Services must be restarted before changes to this value take effect.
+     * Default is null. As the users password must be stored un-encrypted, the
+     * User account used for the share must be a least privilege account. DO NOT
+     * USE A LOCAL ADMINISTRATOR OR A DOMAIN ADMINISTRATOR ACCOUNT!
+     */
+    public static final String NETWORK_SCAN_FOLDER_USER = "network-scan-folder-user";
+    /**
+     * network-scan-folder-password - The password for the user account that
+     * should be used to connect to the network scan folder. Required if the
+     * network scan folder is located at a different computer to the one hosting
+     * the Glassfish server. Used by the Digital Archive Service to display new
+     * scanned documents for attachment to applications. Also used by the
+     * SharedFolderCleaner service to remove images from the scan folder. The
+     * SOLA Services must be restarted before changes to this value take effect.
+     * Default is null. As the users password must be stored un-encrypted, the
+     * User account used for the share must be a least privilege account. DO NOT
+     * USE A LOCAL ADMINISTRATOR OR A DOMAIN ADMINISTRATOR ACCOUNT!
+     */
+    public static final String NETWORK_SCAN_FOLDER_PASSWORD = "network-scan-folder-password";
     /**
      * scanned-file-lifetime - The length of time in hours a file will be left
      * in the network scan folder before it is deleted by the

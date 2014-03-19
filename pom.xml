@@ -64,6 +64,11 @@
             <version>1.6.1</version>
         </dependency>
         <dependency>
+            <groupId>jcifs</groupId>
+            <artifactId>jcifs</artifactId>
+            <version>1.3.17</version>
+        </dependency> 
+        <dependency>
             <!-- Required for the file streaming methods in FileUtility. Set to provided
             as it these methods should only be used by the Web Services or the WS Clients which
             already have a dependency on Metro. Also reduces the size if the SOLA EAR by 13Mb -->

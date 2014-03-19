@@ -50,11 +50,17 @@ import org.sola.common.messaging.ServiceMessage;
 /**
  * Provides static methods to manage various aspects related to the files.
  *
- * The FileUtility also maintains a cache of documents and will automatically purge old files from
- * the cache if the cache exceeds its maximum size (default max size is 200Mb).
+ * The FileUtility also maintains a cache of documents and will automatically
+ * purge old files from the cache if the cache exceeds its maximum size (default
+ * max size is 200Mb).
  */
 public class FileUtility {
 
+    public final static String csv = "csv";
+    // Ticket #397 - use !! to delimit the location of path separators as an
+    // alternative to the default ;. This is because SOLA uses ; as a special
+    // path separator character when dealing with NetworkFolder. 
+    public final static String alternatePathSeparator = "!!";
     private static long maxCacheSizeBytes = 200 * 1024 * 1024;
     private static long resizedCacheSizeBytes = 120 * 1024 * 1024;
     private static int minNumberCachedFiles = 10;
@@ -62,9 +68,10 @@ public class FileUtility {
     private static String cachePath = System.getProperty("user.home") + "/sola/cache/documents/";
 
     /**
-     * Checks the cache to ensure it won't exceed the max size cache size. If the new document will
-     * cause the cache to exceed the max size, the older documents in the cache are deleted until
-     * the cache reaches the resize limit.
+     * Checks the cache to ensure it won't exceed the max size cache size. If
+     * the new document will cause the cache to exceed the max size, the older
+     * documents in the cache are deleted until the cache reaches the resize
+     * limit.
      *
      * @param cache The directory for the documents cache
      * @param newFileSize The size of the new file to open in bytes.
@@ -78,7 +85,6 @@ public class FileUtility {
             // on thier last modified date. 
             List<File> files = Arrays.asList(cache.listFiles());
             Collections.sort(files, new Comparator<File>() {
-
                 @Override
                 public int compare(File f1, File f2) {
                     return (f1.lastModified() > f2.lastModified() ? 1
@@ -105,16 +111,16 @@ public class FileUtility {
     }
 
     /**
-     * Sets the minimum number of files that should be left in the cache when it is being resized.
-     * Default is 10.
+     * Sets the minimum number of files that should be left in the cache when it
+     * is being resized. Default is 10.
      */
     public static void setMinNumberCachedFiles(int num) {
         minNumberCachedFiles = num;
     }
 
     /**
-     * The target size of the cache in bytes after a resize/maintenance is performed. Default is
-     * 120MB.
+     * The target size of the cache in bytes after a resize/maintenance is
+     * performed. Default is 120MB.
      *
      * @param sizeInBytes The target size of the cache in bytes.
      */
@@ -132,14 +138,17 @@ public class FileUtility {
     }
 
     /**
-     * The maximum size of a file (in bytes) that can be loaded into SOLA. Default is 100MB.
+     * The maximum size of a file (in bytes) that can be loaded into SOLA.
+     * Default is 100MB.
      *
-     * <p>SOLA uses a file streaming service to upload and download files to and from the client.
-     * The file streaming service streams files directly to disk and does not store them in memory
-     * allowing the SOLA client application to potentially handle files of any size. However, be
-     * aware that files must be completely loaded into memory by the Digital Archive Service before
-     * they can be saved to the SOLA database. Increasing this value from its default may require
-     * adjusting the memory settings for the SOLA domain on the SOLA Glassfish Server. </p>
+     * <p>SOLA uses a file streaming service to upload and download files to and
+     * from the client. The file streaming service streams files directly to
+     * disk and does not store them in memory allowing the SOLA client
+     * application to potentially handle files of any size. However, be aware
+     * that files must be completely loaded into memory by the Digital Archive
+     * Service before they can be saved to the SOLA database. Increasing this
+     * value from its default may require adjusting the memory settings for the
+     * SOLA domain on the SOLA Glassfish Server. </p>
      *
      * @param sizeInBytes The maximum size of the file in bytes.
      */
@@ -171,9 +180,9 @@ public class FileUtility {
     }
 
     /**
-     * Returns true if the file to check is already in the documents cache. Note that the document
-     * name should include the rowVersion number to ensure any documents that get updated also get
-     * reloaded in the cache.
+     * Returns true if the file to check is already in the documents cache. Note
+     * that the document name should include the rowVersion number to ensure any
+     * documents that get updated also get reloaded in the cache.
      *
      * @param tmpFileName The name of the file to check in the documents cache.
      */
@@ -184,8 +193,9 @@ public class FileUtility {
     }
 
     /**
-     * Returns the byte array for the file. The default maximum size of a file to load is 100MB.
-     * This can be modified using {@linkplain #setMaxFileSizeBytes(long)}
+     * Returns the byte array for the file. The default maximum size of a file
+     * to load is 100MB. This can be modified using
+     * {@linkplain #setMaxFileSizeBytes(long)}
      *
      * @param filePath The full path to the file
      */
@@ -223,8 +233,36 @@ public class FileUtility {
     }
 
     /**
-     * Returns the size of the directory. This is done by summing the size of each file in the
-     * directory. The sizes of all subdirectories can be optionally included.
+     * Returns file name excluding extention.
+     *
+     * @param fileName The name of the file.
+     */
+    public static String getFileNameWithoutExtension(String fileName) {
+        String name = fileName;
+        if (fileName.lastIndexOf(".") > 0 && fileName.lastIndexOf(".") < fileName.length()) {
+            name = fileName.substring(0, fileName.lastIndexOf("."));
+        }
+        return name;
+    }
+
+    /*
+     * Get the extension of a file.
+     */
+    public static String getFileExtension(File f) {
+        String ext = null;
+        String s = f.getName();
+        int i = s.lastIndexOf('.');
+
+        if (i > 0 && i < s.length() - 1) {
+            ext = s.substring(i + 1).toLowerCase();
+        }
+        return ext;
+    }
+
+    /**
+     * Returns the size of the directory. This is done by summing the size of
+     * each file in the directory. The sizes of all subdirectories can be
+     * optionally included.
      *
      * @param directory The directory to calculate the size for.
      */
@@ -246,8 +284,8 @@ public class FileUtility {
     }
 
     /**
-     * Opens the specified file from the documents cache. If the file does not exist in the cache a
-     * File Open exception is thrown.
+     * Opens the specified file from the documents cache. If the file does not
+     * exist in the cache a File Open exception is thrown.
      *
      * @param tmpFileName The name of the file to open from the documents cache.
      */
@@ -257,11 +295,12 @@ public class FileUtility {
     }
 
     /**
-     * Creates a new file in the documents cache using the fileBinary data then opens the file for
-     * display.
+     * Creates a new file in the documents cache using the fileBinary data then
+     * opens the file for display.
      *
      * @param fileBinary The binary content of the file to open.
-     * @param fileName The name to use for creating the file. This name must exclude any file path.
+     * @param fileName The name to use for creating the file. This name must
+     * exclude any file path.
      */
     public static void openFile(byte[] fileBinary, String fileName) {
         File file = writeFileToCache(fileBinary, fileName);
@@ -312,7 +351,8 @@ public class FileUtility {
     }
 
     /**
-     * Creates thumbnail image for the given file. Returns null if format is not supported.
+     * Creates thumbnail image for the given file. Returns null if format is not
+     * supported.
      *
      * @param filePath The full path to the file.
      * @param width Thumbnail width.
@@ -369,16 +409,16 @@ public class FileUtility {
                     // draw the first page to an image
                     PDFPage page = pdffile.getPage(0);
 
-                    //get the width and height for the doc at the default zoom 
-                    Rectangle rect = new Rectangle(0, 0,
-                            (int) page.getBBox().getWidth(),
-                            (int) page.getBBox().getHeight());
-
                     //generate the image
+                    //#319 Improve quality of the image preview by ensuring the whole page
+                    // is captured correctly post any rotation that may be required. 
+                    // Use a multiple of 3 to increase the image depth for better image
+                    // definition. 
                     thumbnail = page.getImage(
-                            rect.width, rect.height, //width & height
-                            rect, // clip rect
-                            null, // null for the ImageObserver
+                            (int) page.getWidth() * 3,
+                            (int) page.getHeight() * 3,
+                            null, // null for the clip rectangle to ensure entire page is captured
+                            null,
                             true, // fill background with white
                             true // block until drawing is done
                             );
@@ -429,13 +469,14 @@ public class FileUtility {
     }
 
     /**
-     * Removes path separator characters (i.e. / and \) from the fileName. Used to ensure user input
-     * does not redirect files to an unsafe locations. Also replaces the extension for any file with
-     * an executable file extension with .tmp if the replaceExtension parameter is true.
+     * Removes path separator characters (i.e. / and \) from the fileName. Used
+     * to ensure user input does not redirect files to an unsafe locations. Also
+     * replaces the extension for any file with an executable file extension
+     * with .tmp if the replaceExtension parameter is true.
      *
      * @param fileName The fileName to sanitize.
-     * @param replaceExtension If true, any executable extension on the file will be replaced with
-     * .tmp
+     * @param replaceExtension If true, any executable extension on the file
+     * will be replaced with .tmp
      * @see #isExecutable(java.lang.String)
      * @see #setTmpExtension(java.lang.String)
      */
@@ -448,8 +489,8 @@ public class FileUtility {
     }
 
     /**
-     * Checks if the file extension is considered to be an executable file extension. Returns true
-     * if the extension is .exe, .msi, .bat, .cmd
+     * Checks if the file extension is considered to be an executable file
+     * extension. Returns true if the extension is .exe, .msi, .bat, .cmd
      *
      * @param fileName The file name to check
      */
@@ -461,8 +502,9 @@ public class FileUtility {
     }
 
     /**
-     * Replaces the file extension with tmp. Note that the original file extension is retained as
-     * part of the file name. e.g. file.exe becomes file_exe.tmp
+     * Replaces the file extension with tmp. Note that the original file
+     * extension is retained as part of the file name. e.g. file.exe becomes
+     * file_exe.tmp
      *
      * @param fileName The file name to check.
      */
@@ -472,9 +514,11 @@ public class FileUtility {
     }
 
     /**
-     * Generates a default file name using a random GUID as the primary file name value.
+     * Generates a default file name using a random GUID as the primary file
+     * name value.
      *
-     * @see #generateFileName(java.lang.String, int, java.lang.String) generateFileName
+     * @see #generateFileName(java.lang.String, int, java.lang.String)
+     * generateFileName
      */
     public static String generateFileName() {
         return generateFileName(java.util.UUID.randomUUID().toString(), 0, "tmp");
@@ -497,25 +541,27 @@ public class FileUtility {
     }
 
     /**
-     * Saves a data stream from a {@linkplain DataHandler} to the specified file. Used to allow more
-     * efficient management of large file transfers between the SOLA client(s) and the web services.
+     * Saves a data stream from a {@linkplain DataHandler} to the specified
+     * file. Used to allow more efficient management of large file transfers
+     * between the SOLA client(s) and the web services.
      *
      * <p>If the DataHandler is a {@linkplain StreamingDataHandler}, then the
-     * {@linkplain StreamingDataHandler#moveTo(java.io.File)} method is used to save the file to
-     * disk. Otherwise the InputStream from the DataHandler is written to disk using
+     * {@linkplain StreamingDataHandler#moveTo(java.io.File)} method is used to
+     * save the file to disk. Otherwise the InputStream from the DataHandler is
+     * written to disk using
      * {@linkplain #writeFileToCache(java.io.InputStream, java.io.File) writeFileToCache}.</p>
      *
-     * <p>Note that file streaming is not currently supported if Metro security is used. Refer to
-     * http://java.net/jira/browse/WSIT-1081 for details. Using Security also substantially
-     * increases the memory required to handle large files with a practical limit around 15MB to
-     * 20MB.</p>
+     * <p>Note that file streaming is not currently supported if Metro security
+     * is used. Refer to http://java.net/jira/browse/WSIT-1081 for details.
+     * Using Security also substantially increases the memory required to handle
+     * large files with a practical limit around 15MB to 20MB.</p>
      *
      * @param dataHandler The dataHandler representing the file.
-     * @param fileName The name of the file to write the DataHander stream to. If null a random file
-     * name will be generated for the stream.
-     * @return The file name used to save the file data. This may differ from the fileName passed in
-     * if the fileName was null or it included invalid characters (e.g. / \). Will return null if
-     * the dataHandler is null;
+     * @param fileName The name of the file to write the DataHander stream to.
+     * If null a random file name will be generated for the stream.
+     * @return The file name used to save the file data. This may differ from
+     * the fileName passed in if the fileName was null or it included invalid
+     * characters (e.g. / \). Will return null if the dataHandler is null;
      */
     public static String saveFileFromStream(DataHandler dataHandler, String fileName) {
         if (dataHandler == null) {
@@ -552,12 +598,12 @@ public class FileUtility {
     }
 
     /**
-     * Creates a {@linkplain DataHandler} for a file located on the local file system. The file can
-     * be loaded from any accessible location.
+     * Creates a {@linkplain DataHandler} for a file located on the local file
+     * system. The file can be loaded from any accessible location.
      *
-     * @param fileName The name of the file to create the DataHandler for. If the file is in the
-     * cache, only the file name is required. If the file is located elsewhere, the full file
-     * pathname is required.
+     * @param fileName The name of the file to create the DataHandler for. If
+     * the file is in the cache, only the file name is required. If the file is
+     * located elsewhere, the full file pathname is required.
      */
     public static DataHandler getFileAsStream(String filePathName) {
         File file = new File(getCachePath() + File.separator + filePathName);
@@ -575,8 +621,9 @@ public class FileUtility {
     }
 
     /**
-     * Creates a {@linkplain DataHandler} for a byte array representing the content of a file. Also
-     * configures the MIME type to ensure the content is correctly mapped as a DataHander.
+     * Creates a {@linkplain DataHandler} for a byte array representing the
+     * content of a file. Also configures the MIME type to ensure the content is
+     * correctly mapped as a DataHander.
      *
      * @param fileContent The byte array containing the file content.
      */
@@ -585,13 +632,14 @@ public class FileUtility {
     }
 
     /**
-     * Writes the file content to a file in the documents cache. The fileName is sanitized before
-     * the new file is written. The new file name can be obtained from the {@linkplain File#getName()}
-     * method.
+     * Writes the file content to a file in the documents cache. The fileName is
+     * sanitized before the new file is written. The new file name can be
+     * obtained from the {@linkplain File#getName()} method.
      *
      * @param fileContent The content of the file to write to the file system
-     * @param fileName The name to use for the new file. That file name may change due to
-     * sanitization. If the fileName is null, a random file name will be used.
+     * @param fileName The name to use for the new file. That file name may
+     * change due to sanitization. If the fileName is null, a random file name
+     * will be used.
      */
     public static File writeFileToCache(byte[] fileContent, String fileName) {
         if (fileContent == null) {
@@ -616,9 +664,11 @@ public class FileUtility {
     }
 
     /**
-     * Reads a file in the documents cache into a byte array for further processing.
+     * Reads a file in the documents cache into a byte array for further
+     * processing.
      *
-     * @param fileName THe name of the file to read. The fileName will be sanitized.
+     * @param fileName THe name of the file to read. The fileName will be
+     * sanitized.
      * @return The byte array representing the content of the file.
      */
     public static byte[] readFileFromCache(String fileName) {
@@ -633,12 +683,14 @@ public class FileUtility {
     }
 
     /**
-     * Writes the data from an input stream to the specified file using buffered 8KB chunks. This
-     * method closes the input stream once the write is completed.
+     * Writes the data from an input stream to the specified file using buffered
+     * 8KB chunks. This method closes the input stream once the write is
+     * completed.
      *
      * @param in The InputStream to write
      * @param file The file to write the input stream to
-     * @throws IOException If an IO error occurs while attempting to write the file.
+     * @throws IOException If an IO error occurs while attempting to write the
+     * file.
      */
     public static void writeFile(InputStream in, File file) throws IOException {
         if (file == null || in == null) {
@@ -672,7 +724,8 @@ public class FileUtility {
      * Reads a file from the file system into a byte array.
      *
      * @param file The file to read.
-     * @return Byte array representing the file content. Returns null if the file does not exist.
+     * @return Byte array representing the file content. Returns null if the
+     * file does not exist.
      * @throws IOException
      */
     public static byte[] readFile(File file) throws IOException {
