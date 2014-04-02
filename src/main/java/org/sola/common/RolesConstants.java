@@ -80,6 +80,7 @@ public class RolesConstants {
     public static final String GIS_VIEW_MAP = "ViewMap";
     public static final String GIS_PRINT = "PrintMap";
     public static final String GIS_EXPORT_MAP = "ExportMap";
+    public static final String GIS_MEASURE_TOOL = "MeasureTool";
     // CADASTRE
     public static final String CADASTRE_PARCEL_SAVE = "ParcelSave";
     // PARTY
