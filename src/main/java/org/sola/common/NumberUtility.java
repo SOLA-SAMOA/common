@@ -28,11 +28,15 @@ package org.sola.common;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.text.Format;
 import java.text.ParseException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.text.NumberFormatter;
 
 public class NumberUtility {
+
+   // 1a = 4046.8564 square metres
+    public static Double METRES_IN_ACRE = new Double(4046.8564224);
 
     /**
      * Returns the rounded double number with a given precision.
@@ -47,8 +51,9 @@ public class NumberUtility {
     }
 
     /**
-     * Formats a BigDecimal value representing an area in square metres into a string indicating the
-     * area as metres squared (where area is less that 10,000) or hectares (where area is >= 10,000
+     * Formats a BigDecimal value representing an area in square metres into a
+     * string indicating the area as metres squared (where area is less that
+     * 10,000) or hectares (where area is >= 10,000
      *
      * @param area The area in metres to format
      * @return The formated area or null if area is null
@@ -61,10 +66,11 @@ public class NumberUtility {
                 if (area.compareTo(new BigDecimal("10000")) >= 0) {
                     // The area is >= 10,000 so format as hectares
                     area = area.divide(new BigDecimal("10000"));
-                    area.setScale(3, RoundingMode.DOWN);
-                    result = System.lineSeparator() + areaFormatter.valueToString(area) + "ha";
+                    area = area.setScale(3, RoundingMode.DOWN);
+                    result = areaFormatter.valueToString(area) + "ha";
                 } else {
                     // Format the area has metres squared
+                    area = area.setScale(0, RoundingMode.DOWN);
                     result = areaFormatter.valueToString(area) + "m" + (char) 178; // Superscript 2
                 }
             } catch (ParseException psex) {
@@ -74,8 +80,8 @@ public class NumberUtility {
     }
 
     /**
-     * Formats a BigDecimal value representing an area in square meters an imperial area (i.e.
-     * acres, roods and perches.
+     * Formats a BigDecimal value representing an area in square meters an
+     * imperial area (i.e. acres, roods and perches.
      *
      * @param area The area in meters to format
      * @return The formated area or null if area is null
@@ -89,7 +95,7 @@ public class NumberUtility {
             NumberFormatter areaFormatter = new NumberFormatter(DecimalFormat.getNumberInstance());
             try {
                 // 1a = 4046.8564 square metres
-                Double acresTmp = new Double(area / 4046.8564);
+                Double acresTmp = new Double(area / METRES_IN_ACRE);
                 int acres = acresTmp.intValue();
                 Double remainder = acresTmp - acres;
                 // 4 roods to an acre
@@ -98,18 +104,81 @@ public class NumberUtility {
                 remainder = roodsTmp - roods;
                 // 40 perches to a rood
                 Double perches = remainder * 40;
+
+                // This function introduces some rounding, so increment the 
+                // roods if perches is near 40 and adjust the acres accordingly. 
+                if (perches >= new Double(39.95)) {
+                    roods++;
+                    perches = new Double(0);
+                    if (roods == 4) {
+                        acres++;
+                        roods = 0;
+                    }
+                }
+
                 if (acres >= 1) {
                     result = areaFormatter.valueToString(acres) + "a";
                 }
-                if (acres >= 1 || roods >= 1) {
+                if (roods >= 1) {
                     DecimalFormat f = new DecimalFormat("0r");
                     result = result + " " + f.format(roods);
                 }
-                DecimalFormat p = new DecimalFormat("00.0p");
-                result = result + " " + p.format(perches);
-                result.trim();
+                if (perches >= new Double(0.05)) {
+                    DecimalFormat p = new DecimalFormat("0.0p");
+                    result = result + " " + p.format(perches);
+                }
+                result = result.trim();
 
             } catch (ParseException psex) {
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Converts an area in imperial format to its metric equivalent. If the
+     * imperial value fails to match the expected pattern, a NULL value is
+     * returned.
+     *
+     * @param areaImp The area in imperial format. Acre must have a suffix of a,
+     * roods must have a suffix of r and perches must have a suffix of p. E.g.
+     * 5a 3r 30.5p
+     * @return The metric value for the imperial area or null if the imperial
+     * value area could not be parsed.
+     */
+    public static BigDecimal convertImperialToMetric(String areaImp) {
+        BigDecimal result = null;
+        if (areaImp != null && !areaImp.trim().isEmpty()) {
+            // Use a pattern matcher to parse out the imperial area values. Look 
+            // for a (acre), r (rood) and p (perch) and various combinations of
+            // those abbreviations, with and without spaces. 
+            String regex = "(.*?)a| (.*?)r|(.*?)r|a(.*?)r| (.*?)p|(.*?)p|r(.*?)p|a(.*?)p";
+            Pattern pattern = Pattern.compile(regex);
+            if (pattern.matcher(areaImp.toLowerCase()).matches()) {
+                Double acre = new Double(0);
+                Double rood = new Double(0);
+                Double perch = new Double(0);
+                Matcher matcher = pattern.matcher(areaImp.toLowerCase());
+                while (matcher.find()) {
+                    String tmp = matcher.group();
+                    if (tmp != null) {
+                        if (tmp.endsWith("a")) {
+                            // Get the acre value removing any reference to a or ,
+                            acre = new Double(tmp.replaceAll("a|,", "").trim());
+                        }
+                        if (tmp.endsWith("r")) {
+                            // Get the rood value removing any refernece to a or r
+                            rood = new Double(tmp.replaceAll("r|a", "").trim());
+                        }
+                        if (tmp.endsWith("p")) {
+                            // Get the perch value removing any reference ot p, a or r
+                            perch = new Double(tmp.replaceAll("p|a|r", "").trim());
+                        }
+                    }
+                }
+                // Calculate the area meters for the imperial value. 
+                Double areaTmp = (acre + (rood / 4) + (perch / 160)) * METRES_IN_ACRE;
+                result = new BigDecimal(areaTmp).setScale(1, RoundingMode.DOWN);
             }
         }
         return result;
