@@ -778,4 +778,59 @@ public class FileUtility {
         File file = new File(getCachePath() + File.separator + fileName);
         deleteFile(file);
     }
+    
+    /**
+     * Prints the specified file from the documents cache. If the file does not
+     * exist in the cache a File Open exception is thrown.
+     *
+     * @param tmpFileName The name of the file to print from the documents cache.
+     */
+    public static void printFile(String tmpFileName) {
+        String fileName = sanitizeFileName(tmpFileName, true);
+        printFile(new File(getCachePath() + File.separator + fileName));
+    }
+    
+    /**
+     * Prints the file from the documents cache using the Java Desktop.
+     *
+     * @param file The file to print
+     * @throws SOLAException Failed to open file
+     */
+    public static void printFile(File file) {
+        if (file == null) {
+            return;
+        }
+        String fileName = file.getName();
+        if (isExecutable(fileName)) {
+            // Make sure the extension is changed before opening the file. 
+            fileName = setTmpExtension(fileName);
+            File nonExeFile = new File(getCachePath() + File.separator + fileName);
+            file.renameTo(nonExeFile);
+            file = nonExeFile;
+        }
+        // Try to print the file. Need to check if the current platform has Java Desktop support and 
+        // if so, whether the OPEN action is also supported. 
+        boolean filePrinted = false;
+        if (Desktop.isDesktopSupported()) {
+            Desktop dt = Desktop.getDesktop();
+            if (dt.isSupported(Desktop.Action.PRINT)) {
+                try {
+                    dt.print(file);
+                    filePrinted = true;
+                } catch (Exception ex) {
+                    // The file could not be printed. The most likely cause is there is no editor
+                    // installed for the file extension, but it may be due to file security 
+                    // restrictions. Either way, inform the user they should print the file manually. 
+                    filePrinted = false;
+                }
+            }
+        }
+        if (!filePrinted) {
+            // The Java Desktop is not supported on this platform. Riase a mesage to 
+            // tell the user they must manually print the document. 
+            MessageUtility.displayMessage(ClientMessage.ERR_FAILED_PRINT_FILE,
+                    new String[]{file.getAbsolutePath()});
+        }
+    }
+    
 }
