@@ -71,6 +71,7 @@ public class RolesConstants {
     public static final String ADMINISTRATIVE_BA_UNIT_PRINT_CERT = "BaunitCertificate";
     public static final String ADMINISTRATIVE_BA_UNIT_SEARCH = "BaunitSearch";
     public static final String ADMINISTRATIVE_STRATA_UNIT_CREATE = "StrataUnitCreate";
+    public static final String ADMINISTRATIVE_MAKE_PROP_CURRENT = "MakePropCurrent"; 
     // TRANSACTIONAL DOCUMENTS
     public static final String SOURCE_TRANSACTIONAL = "TransactionCommit";
     // DOCUMENTS
