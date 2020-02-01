@@ -5,13 +5,13 @@
     <parent>
         <artifactId>sola-main</artifactId>
         <groupId>org.sola</groupId>
-        <version>2001a</version>
+        <version>2001c</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <groupId>org.sola.common</groupId>
     <artifactId>sola-common</artifactId>
     <packaging>jar</packaging>
-    <version>2001a</version>
+    <version>2001c</version>
     <name>Common Utilities</name>
     <build>
         <plugins>
